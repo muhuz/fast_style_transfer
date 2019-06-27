@@ -4,7 +4,7 @@ import tensorflow as tf
 import time
 
 from transform_net import transform_net
-from loss_net import vgg
+from loss_net import vgg, normalize, denormalize
 from utils import load_image, image_generator
 
 train_data_path = '../data/train_data'
@@ -69,7 +69,8 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
     # includes the gram matricies of the activations used
     # for style loss and the activations of the layer used for
     # content loss.
-    style_act_dict = vgg(style_image)
+    style_image_norm = normalize(style_image)
+    style_act_dict = vgg(style_image_norm)
     style_gram_dict = {}
     with tf.Session() as sess:
         style_content_layer = sess.run(style_act_dict[content_layer])
@@ -80,7 +81,8 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
 
     # Compute the content image activations
     input_image = tf.placeholder(tf.float32, shape=[batch_size, 256, 256, 3])
-    output_image = transform_net(input_image)
+    input_image_norm = normalize(input_image)
+    output_image = transform_net(input_image_norm)
     output_act_dict = vgg(output_image)
     output_gram_dict = {}
     for key, act in output_act_dict.items():
@@ -100,18 +102,19 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
     global_step = tf.Variable(0, name='global_step', trainable=False)
     optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss, global_step=global_step)
 
-
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for i in range(epochs):
+            start_time = time.time()
             for batch in image_generator('../data/train2014', batch_size):
-                start_time = time.time()
+                print(batch.shape)
+                print(batch.dtype)
                 feed_dict = {input_image:batch}
                 optimizer.run(feed_dict=feed_dict)
                 step = global_step.eval()
                 if step % save_step == 0:
                     loss_list = [style_loss, content_loss, total_var_loss, loss]
-                    losses = sess.run(loss_list)
+                    losses = sess.run(loss_list, feed_dict=feed_dict)
                     seconds = time.time() - start_time
                     print('Step {}\n   Loss: {:5.1f}'.format(step, losses[3]))
                     print('   Style Loss: {:5.1f}'.format(losses[0]))
@@ -119,6 +122,7 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
                     print('   TV Loss: {:5.1f}'.format(losses[2]))
                     print('   Took: {} seconds'.format(seconds))
                     saver.save(sess, "checkpoints/model.ckpt")
+                    start_time = time.time()
 
 if __name__ == '__main__':
     content_w = 7.5e0

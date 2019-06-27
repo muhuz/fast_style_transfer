@@ -48,6 +48,12 @@ def vgg(graph_input):
     activations['relu4_4'] = relu4_4
     return activations
 
+def normalize(image):
+    return image - MEAN_PIXELS
+
+def denormalize(image):
+    return image + MEAN_PIXELS
+
 def _get_weights(layer_name):
     """
     Loads the weights for the given convolutional layer of vgg.
