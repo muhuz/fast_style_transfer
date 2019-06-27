@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
+from utils import load_image
+
 INIT_STDDEV = 0.1
 
 def transform_net(inputs):
@@ -19,17 +21,17 @@ def transform_net(inputs):
     return output
 
 def _init_kernel(inputs, n_filters, shape, transpose=False):
-    in_channels = tf.shape(inputs)[-1]
+    in_channels = inputs.get_shape().as_list()[-1]
     if transpose:
         kernel_shape = [shape, shape, n_filters, in_channels]
     else:
         kernel_shape = [shape, shape, in_channels, n_filters]
     kernel_init = tf.truncated_normal(kernel_shape, stddev=INIT_STDDEV)
-    return tf.Variable(kernel_init, dtype=tf.float32)
+    return tf.Variable(kernel_init, dtype=tf.float32, validate_shape=False)
 
 def _conv_layer(inputs, num_filters, filter_shape, stride, transpose=False, use_relu=True):
     """
-    Makes a convolutional layer that pads to keep the input the 
+    Makes a convolutional layer that pads to keep the input the
     same size as the output and applies instance normalization
     on the activations.
     """
@@ -72,11 +74,11 @@ def _instance_norm(inputs):
     return (inputs - means)/stddevs
 
 if __name__ == "__main__":
-    random_vals = np.random.random(size = [4, 252, 252, 3])
+    puppy_image = load_image('../images/style/abstract_rainbow.jpg', expand_dims=True)
     sess = tf.Session()
-    x = tf.constant(random_vals, dtype=tf.float32)
-    output = transform_net(x) 
+    x = tf.constant(puppy_image, dtype=tf.float32)
+    output = transform_net(x)
     sess.run(tf.global_variables_initializer())
     # sess.run(tf.local_variables_initializer())
     o = sess.run(output)
-    
+
