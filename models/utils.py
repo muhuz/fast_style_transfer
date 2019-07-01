@@ -25,12 +25,21 @@ def image_generator(train_data_path, batch_size):
             image = load_image(os.path.join(train_data_path, image_path))
             if image.shape[-1] == 3:
                 batch.append(image)
-        yield np.array(batch)
+        yield np.array(batch, dtype=np.float32)
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     puppy_image = load_image('../images/content/puppy.jpg')
     gen = image_generator('../data/train2014', 4)
+    k = 0
     for x in gen:
-        if x.shape != (4, 256, 256, 3):
-            print("Bad image")
+        fig, axes = plt.subplots(2, 2)
+        for i in range(4):
+            j, k = i % 2, i // 2
+            axes[j,k].imshow(x[i].astype(int))
+        plt.show()
+        k += 1
+        if k == 10:
+            break
+
 
