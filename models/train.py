@@ -26,12 +26,6 @@ def layer_style_loss(pred_gram, target_gram):
     input_shape = tf.shape(pred_gram, out_type=tf.float32)
     batch_size = input_shape[0]
     input_size = tf.size(pred_gram, out_type=tf.float32)
-    # reshape_pred = tf.reshape(pred, [batch_size, channels, -1])
-    # reshape_pred_t = tf.reshape(pred, [batch_size, -1, channels])
-    # reshape_target = tf.reshape(target, [batch_size, channels, -1])
-    # reshape_target_t = tf.reshape(target, [batch_size, -1, channels])
-    # gram_pred = tf.matmul(reshape_pred, reshape_pred_t)
-    # gram_target = tf.matmul(reshape_target, reshape_target_t)
     return tf.reduce_sum((pred_gram-target_gram)**2) / (input_size ** 2) / batch_size
 
 def gram(batch_input):
@@ -69,46 +63,50 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
     # includes the gram matricies of the activations used
     # for style loss and the activations of the layer used for
     # content loss.
-    style_image_norm = normalize(style_image)
-    style_act_dict = vgg(style_image_norm)
-    style_gram_dict = {}
-    with tf.Session() as sess:
-        style_content_layer = sess.run(style_act_dict[content_layer])
-        for key, act in style_act_dict.items():
-            style_gram_dict[key] = sess.run(style_act_dict[key])
-        for layer in style_layers:
-            style_gram_dict[layer] = sess.run(gram(style_act_dict[layer]))
+    with tf.name_scope("style_comp"):
+        style_image_norm = normalize(style_image)
+        style_act_dict = vgg(style_image_norm)
+        style_gram_dict = {}
+        with tf.Session() as sess:
+            style_content_layer = sess.run(style_act_dict[content_layer])
+            for key, act in style_act_dict.items():
+                style_gram_dict[key] = sess.run(style_act_dict[key])
+            for layer in style_layers:
+                style_gram_dict[layer] = sess.run(gram(style_act_dict[layer]))
 
     # Compute the content image activations
-    input_image = tf.placeholder(tf.float32, shape=[batch_size, 256, 256, 3])
-    input_image_norm = normalize(input_image)
-    output_image = transform_net(input_image_norm)
-    output_act_dict = vgg(output_image)
-    output_gram_dict = {}
-    for key, act in output_act_dict.items():
-        output_gram_dict[key] = gram(act)
-
-    style_losses = []
-    for l in style_layers:
-        style_losses.append(layer_style_loss(output_gram_dict[l], style_gram_dict[l]))
+    with tf.name_scope("image_comp"):
+        input_image = tf.placeholder(tf.float32, shape=[batch_size, 256, 256, 3])
+        input_image_norm = normalize(input_image)
+        output_image = transform_net(input_image_norm)
+        output_act_dict = vgg(output_image)
+        output_gram_dict = {}
+        for key, act in output_act_dict.items():
+            output_gram_dict[key] = gram(act)
 
     # calculate the losses
-    total_var_loss = tv_loss(output_image, batch_size)
-    style_loss = tf.add_n(style_losses) / batch_size
-    content_loss = layer_content_loss(output_act_dict['relu2_2'], style_act_dict['relu2_2'])
-    loss = style_w * style_loss + content_w * content_loss + tv_w * total_var_loss
+    with tf.name_scope("loss"):
+        style_losses = []
+        for l in style_layers:
+            style_losses.append(layer_style_loss(output_gram_dict[l], style_gram_dict[l]))
+        total_var_loss = tv_loss(output_image, batch_size)
+        style_loss = tf.add_n(style_losses) / batch_size
+        content_loss = layer_content_loss(output_act_dict['relu2_2'], style_act_dict['relu2_2'])
+        loss = style_w * style_loss + content_w * content_loss + tv_w * total_var_loss
+        tf.summary.scalar('loss', loss)
 
     saver = tf.train.Saver()
     global_step = tf.Variable(0, name='global_step', trainable=False)
     optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss, global_step=global_step)
 
     with tf.Session() as sess:
+        writer = tf.summary.FileWriter("summaries/")
+        writer.add_graph(sess.graph)
+
         sess.run(tf.global_variables_initializer())
         for i in range(epochs):
             start_time = time.time()
             for batch in image_generator('../data/train2014', batch_size):
-                print(batch.shape)
-                print(batch.dtype)
                 feed_dict = {input_image:batch}
                 optimizer.run(feed_dict=feed_dict)
                 step = global_step.eval()
@@ -123,6 +121,9 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
                     print('   Took: {} seconds'.format(seconds))
                     saver.save(sess, "checkpoints/model.ckpt")
                     start_time = time.time()
+
+
+
 
 if __name__ == '__main__':
     content_w = 7.5e0

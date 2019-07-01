@@ -16,7 +16,7 @@ for layer_data in vgg_layers[0]:
     weights = layer_data['weights'][0][0]
     layer_dict[name] = weights
 
-MEAN_PIXELS = np.array([123.68, 116.779, 103.939])
+MEAN_PIXELS = np.array([123.68, 116.779, 103.939], dtype=np.float32)
 
 
 def vgg(graph_input):
@@ -27,15 +27,15 @@ def vgg(graph_input):
     """
     relu1_1 = _conv2d_relu(graph_input, 'conv1_1')
     relu1_2 = _conv2d_relu(relu1_1, 'conv1_2')
-    pool1 = _pool(relu1_2)
+    pool1 = _pool(relu1_2, 'pool1')
     relu2_1 = _conv2d_relu(pool1, 'conv2_1')
     relu2_2 = _conv2d_relu(relu2_1, 'conv2_2')
-    pool2 = _pool(relu2_2)
+    pool2 = _pool(relu2_2, 'pool2')
     relu3_1 = _conv2d_relu(pool2, 'conv3_1')
     relu3_2 = _conv2d_relu(relu3_1, 'conv3_2')
     relu3_3 = _conv2d_relu(relu3_2, 'conv3_3')
     relu3_4 = _conv2d_relu(relu3_3, 'conv3_4')
-    pool3 = _pool(relu3_4)
+    pool3 = _pool(relu3_4, 'pool3')
     relu4_1 = _conv2d_relu(pool3, 'conv4_1')
     relu4_2 = _conv2d_relu(relu4_1, 'conv4_2')
     relu4_3 = _conv2d_relu(relu4_2, 'conv4_3')
@@ -65,16 +65,18 @@ def _conv2d_relu(inputs, layer_name):
     """
     Initializes the conv and relu layer using vgg weights.
     """
-    weights, bias = _get_weights(layer_name)
-    weights = tf.constant(np.transpose(weights, [1, 0, 2, 3]))
-    bias = tf.constant(bias.reshape(-1))
-    conv = tf.nn.conv2d(inputs, weights,
-                        strides=[1, 1, 1, 1], padding='SAME')
-    return tf.nn.relu(conv + bias)
+    with tf.name_scope('vgg_' + layer_name):
+        weights, bias = _get_weights(layer_name)
+        weights = tf.constant(np.transpose(weights, [1, 0, 2, 3]))
+        bias = tf.constant(bias.reshape(-1))
+        conv = tf.nn.conv2d(inputs, weights,
+                            strides=[1, 1, 1, 1], padding='SAME')
+        return tf.nn.relu(conv + bias)
 
-def _pool(inputs):
-    return tf.nn.max_pool(inputs, ksize=(1, 2, 2, 1),
-                          strides=(1, 2, 2, 1), padding='SAME')
+def _pool(inputs, name):
+    with tf.name_scope('vgg_' + name):
+        return tf.nn.max_pool(inputs, ksize=(1, 2, 2, 1),
+                              strides=(1, 2, 2, 1), padding='SAME')
 
 if __name__ == '__main__':
     """
