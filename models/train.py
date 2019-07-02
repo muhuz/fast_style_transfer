@@ -3,9 +3,10 @@ import os
 import tensorflow as tf
 import time
 
+from eval import transfer_style
 from transform_net import transform_net
 from loss_net import vgg, normalize, denormalize
-from utils import load_image, image_generator
+from utils import load_image, image_generator, save_image
 
 train_data_path = '../data/train_data'
 content_layer = 'relu2_2'
@@ -51,7 +52,8 @@ def tv_loss(image, batch_size):
     return (x_tv/tv_x_size + y_tv/tv_y_size) / batch_size
 
 def optimize(style_path, epochs, batch_size, learning_rate, style_w,
-    content_w, tv_w, save_step):
+             content_w, tv_w, save_step, checkpoint_path,
+             test_image_name, test_image_path, eval_step):
     """
     input a list of file names to batch into the model
     """
@@ -75,27 +77,24 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
                 style_gram_dict[layer] = sess.run(gram(style_act_dict[layer]))
 
     # Compute the content image activations
-    with tf.name_scope("image_comp"):
-        input_image = tf.placeholder(tf.float32, shape=[batch_size, 256, 256, 3])
-        input_image_norm = normalize(input_image)
-        output_image = transform_net(input_image_norm)
-        output_act_dict = vgg(output_image)
-        output_gram_dict = {}
-        for key, act in output_act_dict.items():
-            output_gram_dict[key] = gram(act)
+    input_image = tf.placeholder(tf.float32, shape=[batch_size, 256, 256, 3], name='image_input')
+    input_image_norm = normalize(input_image)
+    output_image = transform_net(input_image_norm)
+    output_act_dict = vgg(output_image)
+    output_gram_dict = {}
+    for key, act in output_act_dict.items():
+        output_gram_dict[key] = gram(act)
 
     # calculate the losses
-    with tf.name_scope("loss"):
-        style_losses = []
-        for l in style_layers:
-            style_losses.append(layer_style_loss(output_gram_dict[l], style_gram_dict[l]))
-        total_var_loss = tv_loss(output_image, batch_size)
-        style_loss = tf.add_n(style_losses) / batch_size
-        content_loss = layer_content_loss(output_act_dict['relu2_2'], style_act_dict['relu2_2'])
-        loss = style_w * style_loss + content_w * content_loss + tv_w * total_var_loss
-        tf.summary.scalar('loss', loss)
+    style_losses = []
+    for l in style_layers:
+        style_losses.append(layer_style_loss(output_gram_dict[l], style_gram_dict[l]))
+    total_var_loss = tv_loss(output_image, batch_size)
+    style_loss = tf.add_n(style_losses) / batch_size
+    content_loss = layer_content_loss(output_act_dict['relu2_2'], style_act_dict['relu2_2'])
+    loss = style_w * style_loss + content_w * content_loss + tv_w * total_var_loss
+    tf.summary.scalar('loss', loss)
 
-    saver = tf.train.Saver()
     global_step = tf.Variable(0, name='global_step', trainable=False)
     optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss, global_step=global_step)
 
@@ -103,6 +102,7 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
         writer = tf.summary.FileWriter("summaries/")
         writer.add_graph(sess.graph)
 
+        saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())
         for i in range(epochs):
             start_time = time.time()
@@ -119,10 +119,19 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
                     print('   Content Loss: {:5.1f}'.format(losses[1]))
                     print('   TV Loss: {:5.1f}'.format(losses[2]))
                     print('   Took: {} seconds'.format(seconds))
-                    saver.save(sess, "checkpoints/model.ckpt")
+                    saver.save(sess, "checkpoints/model", step)
                     start_time = time.time()
 
-
+                # As a test during the training time, record evals
+                # of the various models to make sure training is
+                # happening
+                if step % eval_step == 0:
+                    output_path = '../images/stylized/{}_{}.jpg'.format(test_image_name, step)
+                    test_image = load_image(test_image_path)
+                    test_batch = np.array([test_image for i in range(batch_size)])
+                    test_image_out = sess.run(output_image,
+                                              feed_dict={input_image:test_batch})
+                    save_image(output_path, test_image_out[0, :, :, :])
 
 
 if __name__ == '__main__':
@@ -133,7 +142,9 @@ if __name__ == '__main__':
     style_image_path = '../images/style/abstract_rainbow.jpg'
     # style_image = load_image(style_image_path, expand_dims=True)
     # style_input = tf.constant(style_image, tf.float32)
-    optimize(style_image_path, 1, 4, 1e-3, style_w, content_w, tv_w, 10)
+    optimize(style_image_path, 1, 4, 1e-3,
+             style_w, content_w, tv_w, 3, 'checkpoints',
+             'puppy', '../images/content/puppy.jpg', 3)
 
 
 
