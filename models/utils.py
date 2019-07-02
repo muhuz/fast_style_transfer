@@ -1,6 +1,7 @@
 import numpy as np
 import os
 from PIL import Image, ImageOps
+import scipy
 
 def load_image(image_path, expand_dims=False):
     image = Image.open(image_path)
@@ -10,6 +11,10 @@ def load_image(image_path, expand_dims=False):
     image = np.array(image)
     image = image.astype('float32')
     return image
+
+def save_image(image_path, image):
+    image = np.clip(image, 0, 255).astype('uint8')
+    scipy.misc.imsave(image_path, image)
 
 def image_generator(train_data_path, batch_size):
     """
