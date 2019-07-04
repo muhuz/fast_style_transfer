@@ -9,8 +9,8 @@ from loss_net import vgg, normalize, denormalize
 from utils import load_image, image_generator, save_image
 
 train_data_path = '../data/train_data'
-content_layer = 'relu2_2'
-style_layers = ['relu1_2', 'relu2_2', 'relu3_4', 'relu4_4']
+content_layer = 'relu4_2'
+style_layers = ['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1']
 
 def layer_content_loss(pred, target):
     """
@@ -24,10 +24,10 @@ def layer_style_loss(pred_gram, target_gram):
     Calculates the style reconstruction loss for the inputed gram matrices
     using the Gram Matrix.
     """
-    input_shape = tf.shape(pred_gram, out_type=tf.float32)
-    batch_size = input_shape[0]
+    # input_shape = tf.shape(pred_gram, out_type=tf.float32)
+    # batch_size = input_shape[0]
     input_size = tf.size(pred_gram, out_type=tf.float32)
-    return tf.reduce_sum((pred_gram-target_gram)**2) / (input_size ** 2) / batch_size
+    return tf.reduce_sum((pred_gram-target_gram)**2) / input_size
 
 def gram(batch_input):
     """
@@ -35,10 +35,10 @@ def gram(batch_input):
     of the Gram matrix and then returns the Gram matrix.
     """
     input_shape = tf.shape(batch_input, out_type=tf.float32)
-    batch_size, channels = input_shape[0], input_shape[-1]
-    reshape_batch = tf.reshape(batch_input, [batch_size, channels, -1])
-    reshape_batch_t = tf.reshape(batch_input, [batch_size, -1, channels])
-    return tf.matmul(reshape_batch, reshape_batch_t)
+    batch_size, h, w, filters = (input_shape[i] for i in range(4))
+    reshape_batch = tf.reshape(batch_input, [batch_size, filters, h*w])
+    reshape_batch_t = tf.reshape(batch_input, [batch_size, h*w, filters])
+    return tf.matmul(reshape_batch, reshape_batch_t) / (h * w * filters)
 
 
 def tv_loss(image, batch_size):
@@ -91,7 +91,7 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
         style_losses.append(layer_style_loss(output_gram_dict[l], style_gram_dict[l]))
     total_var_loss = tv_loss(output_image, batch_size)
     style_loss = tf.add_n(style_losses) / batch_size
-    content_loss = layer_content_loss(output_act_dict['relu2_2'], style_act_dict['relu2_2'])
+    content_loss = layer_content_loss(output_act_dict[content_layer], style_act_dict[content_layer])
     loss = style_w * style_loss + content_w * content_loss + tv_w * total_var_loss
     tf.summary.scalar('loss', loss)
 
@@ -136,15 +136,15 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
 
 if __name__ == '__main__':
     content_w = 7.5e0
-    style_w = 1e2
+    style_w = 5e2
     tv_w = 2e2
 
-    style_image_path = '../images/style/abstract_rainbow.jpg'
+    style_image_path = '../images/style/rain_princess.jpg'
     # style_image = load_image(style_image_path, expand_dims=True)
     # style_input = tf.constant(style_image, tf.float32)
     optimize(style_image_path, 1, 4, 1e-3,
-             style_w, content_w, tv_w, 3, 'checkpoints',
-             'puppy', '../images/content/puppy.jpg', 3)
+             style_w, content_w, tv_w, 10, 'checkpoints',
+             'puppy', '../images/content/puppy.jpg', 10)
 
 
 

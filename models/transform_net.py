@@ -20,14 +20,18 @@ def transform_net(inputs):
     scaled_output = tf.nn.tanh(output) * 150 + 255.0/2
     return output
 
-def _init_kernel(inputs, n_filters, shape, transpose=False):
+def _init_kernel(name, inputs, n_filters, shape, transpose=False):
     in_channels = inputs.get_shape().as_list()[-1]
     if transpose:
         kernel_shape = [shape, shape, n_filters, in_channels]
     else:
         kernel_shape = [shape, shape, in_channels, n_filters]
-    kernel_init = tf.truncated_normal(kernel_shape, stddev=INIT_STDDEV)
-    return tf.Variable(kernel_init, dtype=tf.float32, validate_shape=False)
+
+    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+        weights_init = tf.get_variable('weights', shape=kernel_shape,
+                                       initializer=tf.contrib.layers.variance_scaling_initializer(),
+                                       dtype=tf.float32)
+    return weights_init
 
 def _conv_layer(inputs, num_filters, filter_shape, stride, name, transpose=False, use_relu=True):
     """
@@ -35,23 +39,22 @@ def _conv_layer(inputs, num_filters, filter_shape, stride, name, transpose=False
     same size as the output and applies instance normalization
     on the activations.
     """
-    with tf.name_scope(name):
-        kernel = _init_kernel(inputs, num_filters, filter_shape, transpose)
-        if transpose:
-            batch, height, width, in_channels = inputs.get_shape()
-            output_shape = tf.stack([batch, int(stride * height), int(stride * width), num_filters])
-            conv_output = tf.nn.conv2d_transpose(inputs, kernel, output_shape, [1, stride, stride, 1], padding='SAME')
-        else:
-            conv_output = tf.nn.conv2d(inputs, filter=kernel, strides=[1, stride, stride, 1], padding='SAME')
-        bias_init = tf.zeros([num_filters])
-        bias = tf.Variable(bias_init, dtype=tf.float32)
-        conv_output = tf.nn.bias_add(conv_output, bias)
-        norm_output = _instance_norm(conv_output)
-        if use_relu:
-            output = tf.nn.relu(norm_output)
-            return output
-        else:
-            return norm_output
+    kernel = _init_kernel(name, inputs, num_filters, filter_shape, transpose)
+    if transpose:
+        batch, height, width, in_channels = inputs.get_shape()
+        output_shape = tf.stack([batch, int(stride * height), int(stride * width), num_filters])
+        conv_output = tf.nn.conv2d_transpose(inputs, kernel, output_shape, [1, stride, stride, 1], padding='SAME')
+    else:
+        conv_output = tf.nn.conv2d(inputs, filter=kernel, strides=[1, stride, stride, 1], padding='SAME')
+    bias_init = tf.zeros([num_filters])
+    bias = tf.Variable(bias_init, dtype=tf.float32)
+    conv_output = tf.nn.bias_add(conv_output, bias)
+    norm_output = _instance_norm(conv_output, name)
+    if use_relu:
+        output = tf.nn.relu(norm_output)
+        return output
+    else:
+        return norm_output
 
 # def _conv_layer_transposed(inputs, num_filters, filter_shape, stride):
     # kernel = _init_kernel(inputs, num_filters, filter_shape)
@@ -61,9 +64,8 @@ def _conv_layer(inputs, num_filters, filter_shape, stride, name, transpose=False
     # norm_output = _instance_n
 
 def _residual_block(inputs, name):
-    with tf.name_scope(name):
-        block_conv = _conv_layer(inputs, 128, 3, 1, name + '_conv1')
-        return inputs + _conv_layer(block_conv, 128, 3, 1, name + '_conv2', False)
+    block_conv = _conv_layer(inputs, 128, 3, 1, name + '_conv1')
+    return inputs + _conv_layer(block_conv, 128, 3, 1, name + '_conv2', False)
 
 # def _instance_norm(inputs):
 #     means = tf.reduce_mean(inputs, axis=[1, 2])
@@ -71,13 +73,25 @@ def _residual_block(inputs, name):
 #     instance_norm = (inputs - means)/stddevs
 #     return instance_norm
 
-def _instance_norm(inputs):
-    means, stddevs = tf.nn.moments(inputs, axes=[1, 2], keep_dims=True)
-    return (inputs - means)/(stddevs)
+# def _instance_norm(inputs):
+#     means, stddevs = tf.nn.moments(inputs, axes=[1, 2], keep_dims=True)
+#     return (inputs - means)/(stddevs**0.5)
+
+def _instance_norm(inputs, name):
+    batch, rows, cols, channels = [i.value for i in inputs.get_shape()]
+    var_shape = [channels]
+    mu, sigma_sq = tf.nn.moments(inputs, [1,2], keep_dims=True)
+    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+        shift = tf.get_variable('shift', initializer=tf.zeros(var_shape), dtype=tf.float32)
+        scale = tf.get_variable('scale', initializer=tf.ones(var_shape), dtype=tf.float32)
+    epsilon = 1e-3
+    normalized = (inputs-mu)/(sigma_sq + epsilon)
+    return scale * normalized + shift
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    puppy_image = load_image('../images/style/abstract_rainbow.jpg', expand_dims=True)
+    puppy_image = load_image('../images/style/rain_princess.jpg', expand_dims=True)
     sess = tf.Session()
     x = tf.constant(puppy_image, dtype=tf.float32)
     output = transform_net(x)
