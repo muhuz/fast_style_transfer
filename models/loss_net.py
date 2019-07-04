@@ -40,12 +40,16 @@ def vgg(graph_input):
     relu4_2 = _conv2d_relu(relu4_1, 'conv4_2')
     relu4_3 = _conv2d_relu(relu4_2, 'conv4_3')
     relu4_4 = _conv2d_relu(relu4_3, 'conv4_4')
+    pool4 = _pool(relu4_4, 'pool4')
+    relu5_1 = _conv2d_relu(pool4, 'conv5_1')
 
     activations = {}
-    activations['relu1_2'] = relu1_2
-    activations['relu2_2'] = relu2_2
-    activations['relu3_4'] = relu3_4
-    activations['relu4_4'] = relu4_4
+    activations['relu1_1'] = relu1_1
+    activations['relu2_1'] = relu2_1
+    activations['relu3_1'] = relu3_1
+    activations['relu4_1'] = relu4_1
+    activations['relu4_2'] = relu4_2
+    activations['relu5_1'] = relu5_1
     return activations
 
 def normalize(image):

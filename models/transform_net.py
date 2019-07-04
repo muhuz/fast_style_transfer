@@ -16,8 +16,8 @@ def transform_net(inputs):
     res_block_5 = _residual_block(res_block_4, 'res_block_5')
     conv_4 = _conv_layer(res_block_5, 64, 3, 2, 'conv4', transpose=True)
     conv_5 = _conv_layer(conv_4, 32, 3, 2, 'conv5', transpose=True)
-    output = _conv_layer(conv_5, 3, 9, 1, 'output', transpose=True, use_relu=False)
-    scaled_output = tf.nn.tanh(output) * 255/2 + 255/2
+    output = _conv_layer(conv_5, 3, 9, 1, 'output')
+    scaled_output = tf.nn.tanh(output) * 150 + 255.0/2
     return output
 
 def _init_kernel(inputs, n_filters, shape, transpose=False):
@@ -73,7 +73,7 @@ def _residual_block(inputs, name):
 
 def _instance_norm(inputs):
     means, stddevs = tf.nn.moments(inputs, axes=[1, 2], keep_dims=True)
-    return (inputs - means)/stddevs
+    return (inputs - means)/(stddevs)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
