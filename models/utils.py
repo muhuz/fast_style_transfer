@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from PIL import Image, ImageOps
-import scipy
+import scipy.misc
 
 def load_image(image_path, expand_dims=False):
     image = Image.open(image_path)

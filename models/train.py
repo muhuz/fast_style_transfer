@@ -135,7 +135,7 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
 
 
 if __name__ == '__main__':
-    content_w = 7.5e0
+    content_w = 1.5e0
     style_w = 5e2
     tv_w = 2e2
 
@@ -143,8 +143,8 @@ if __name__ == '__main__':
     # style_image = load_image(style_image_path, expand_dims=True)
     # style_input = tf.constant(style_image, tf.float32)
     optimize(style_image_path, 1, 4, 1e-3,
-             style_w, content_w, tv_w, 10, 'checkpoints',
-             'puppy', '../images/content/puppy.jpg', 10)
+             style_w, content_w, tv_w, 300, 'checkpoints',
+             'hearst', '../images/content/hearst_mining.jpg', 100)
 
 
 
