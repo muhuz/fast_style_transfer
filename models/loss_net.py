@@ -87,7 +87,7 @@ if __name__ == '__main__':
     Visualize some layers for a puppy image
     """
     puppy_image = utils.load_image('../images/content/puppy.jpg', expand_dims=True)
-    layers = ['relu1_2', 'relu2_2', 'relu3_4', 'relu4_4']
+    layers = ['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1']
     layer_dict = vgg(puppy_image)
     layer_results = [layer_dict[layer] for layer in layers]
     with tf.Session() as sess:
