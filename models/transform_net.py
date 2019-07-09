@@ -18,7 +18,7 @@ def transform_net(inputs):
     conv_5 = _conv_layer(conv_4, 32, 3, 2, 'conv5', transpose=True)
     output = _conv_layer(conv_5, 3, 9, 1, 'output', use_relu=False)
     scaled_output = tf.nn.tanh(output) * 150 + 255.0/2
-    return output
+    return scaled_output
 
 def _init_kernel(name, inputs, n_filters, shape, transpose=False):
     in_channels = inputs.get_shape().as_list()[-1]
