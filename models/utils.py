@@ -3,9 +3,10 @@ import os
 from PIL import Image, ImageOps
 import scipy.misc
 
-def load_image(image_path, expand_dims=False):
+def load_image(image_path, expand_dims=False, fit=True):
     image = Image.open(image_path)
-    image = ImageOps.fit(image, (256, 256), Image.ANTIALIAS)
+    if fit:
+        image = ImageOps.fit(image, (256, 256), Image.ANTIALIAS)
     if expand_dims:
         image = np.expand_dims(image, axis=0)
     image = np.array(image)
