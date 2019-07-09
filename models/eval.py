@@ -6,9 +6,9 @@ from utils import load_image, save_image
 
 def transfer_style(image_path, checkpoint_path, output_path):
 
-    image = load_image(image_path, expand_dims=True)
+    image = load_image(image_path, expand_dims=True, fit=False)
 
-    input_image = tf.placeholder(tf.float32, shape=[1, 256, 256, 3])
+    input_image = tf.placeholder(tf.float32, shape=image.shape)
     style_output = transform_net(input_image)
 
     with tf.Session() as sess:
