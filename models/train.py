@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import tensorflow as tf
@@ -51,9 +52,9 @@ def tv_loss(image, batch_size):
     x_tv = tf.reduce_sum((image[:,1:,:,:] - image[:,:-1,:,:])**2)
     return (x_tv/tv_x_size + y_tv/tv_y_size) / batch_size
 
-def optimize(style_path, epochs, batch_size, learning_rate, style_w,
+def optimize(style_name, style_path, epochs, batch_size, learning_rate, style_w,
              content_w, tv_w, save_step, checkpoint_path,
-             test_image_name, test_image_path, eval_step):
+             test_image_name, test_image_path, eval_step, debug=False):
     """
     input a list of file names to batch into the model
     """
@@ -72,15 +73,38 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
         with tf.Session() as sess:
             style_content_layer = sess.run(style_act_dict[content_layer])
             for key, act in style_act_dict.items():
-                style_gram_dict[key] = sess.run(style_act_dict[key])
+                style_act_dict[key] = sess.run(style_act_dict[key])
             for layer in style_layers:
                 style_gram_dict[layer] = sess.run(gram(style_act_dict[layer]))
+    # return style_act_dict, style_gram_dict
+
+    if debug:
+        for layer, act in style_act_dict.items():
+            # Save the first 16 activations
+            fig, axes = plt.subplots(4, 4)
+            for i in range(16):
+                j, k = i % 4, i // 4
+                axes[j, k].imshow(act[0][:,:,i])
+            fig.suptitle("Activations for Layer: {}".format(layer))
+            plt.show()
+            # save_image(act, '../images/layers/{}_{}.jpg'.format(style_name, layer))
+        for layer, gram_ in style_gram_dict.items():
+            # save_image(gram_, '../images/layers/{}_{}_gram.jpg'.format(style_name, layer))
+            fig, axes = plt.subplots(4, 4)
+            for i in range(16):
+                j, k = i % 4, i // 4
+                axes[j, k].imshow(gram_[0][:,:])
+            fig.suptitle("Visualize Gram for Layer: {}".format(layer))
+            plt.show()
 
     # Compute the content image activations
     input_image = tf.placeholder(tf.float32, shape=[batch_size, 256, 256, 3], name='image_input')
     input_image_norm = normalize(input_image)
-    output_image = transform_net(input_image_norm)
-    output_act_dict = vgg(output_image)
+    input_content_layer = vgg(input_image_norm)[content_layer]
+
+    output_image = transform_net(input_image/255.0)
+    norm_output_image = normalize(output_image)
+    output_act_dict = vgg(norm_output_image)
     output_gram_dict = {}
     for key, act in output_act_dict.items():
         output_gram_dict[key] = gram(act)
@@ -91,7 +115,7 @@ def optimize(style_path, epochs, batch_size, learning_rate, style_w,
         style_losses.append(layer_style_loss(output_gram_dict[l], style_gram_dict[l]))
     total_var_loss = tv_loss(output_image, batch_size)
     style_loss = tf.add_n(style_losses) / batch_size
-    content_loss = layer_content_loss(output_act_dict[content_layer], style_act_dict[content_layer])
+    content_loss = layer_content_loss(input_content_layer, output_act_dict[content_layer])
     loss = style_w * style_loss + content_w * content_loss + tv_w * total_var_loss
     tf.summary.scalar('loss', loss)
 
@@ -142,10 +166,13 @@ if __name__ == '__main__':
     style_image_path = '../images/style/rain_princess.jpg'
     # style_image = load_image(style_image_path, expand_dims=True)
     # style_input = tf.constant(style_image, tf.float32)
-    optimize(style_image_path, 1, 4, 1e-3,
-             style_w, content_w, tv_w, 300, 'checkpoints',
-             'hearst', '../images/content/hearst_mining.jpg', 100)
+    optimize('princess', style_image_path, 1, 4, 1e-3,
+             style_w, content_w, tv_w, 3, 'checkpoints',
+             'hearst', '../images/content/hearst_mining.jpg', 3, debug=False)
 
+    # dict1, dict2 = optimize('princess', style_image_path, 1, 4, 1e-3,
+             # style_w, content_w, tv_w, 300, 'checkpoints',
+             # 'hearst', '../images/content/hearst_mining.jpg', 100, debug=True)
 
 
 
