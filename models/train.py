@@ -171,12 +171,12 @@ if __name__ == '__main__':
     style_w = 1e2
     tv_w = 2e2
 
-    style_image_path = '../images/style/rain_princess.jpg'
+    style_image_path = '../images/style/big_wave.jpg'
     # style_image = load_image(style_image_path, expand_dims=True)
     # style_input = tf.constant(style_image, tf.float32)
-    optimize('princess', style_image_path, 1, 4, 1e-3,
+    optimize('wave', style_image_path, 1, 4, 1e-3,
              style_w, content_w, tv_w, 3000, 'checkpoints',
-             'hearst', '../images/content/hearst_mining.jpg', 3000, debug=False)
+             'hearst', '../images/content/hearst_mining.jpg', 1000, debug=False)
 
     # dict1, dict2 = optimize('princess', style_image_path, 1, 4, 1e-3,
              # style_w, content_w, tv_w, 300, 'checkpoints',
