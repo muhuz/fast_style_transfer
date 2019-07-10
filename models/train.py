@@ -128,6 +128,14 @@ def optimize(style_name, style_path, epochs, batch_size, learning_rate, style_w,
 
         saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())
+        if os.path.isdir(checkpoint_path):
+            ckpt = tf.train.get_checkpoint_state(checkpoint_path)
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+            else:
+                raise Exception("No Checkpoint Found")
+        else:
+            saver.restore(sess, checkpoint_path)
         for i in range(epochs):
             start_time = time.time()
             for batch in image_generator('../data/train2014', batch_size):
@@ -167,8 +175,8 @@ if __name__ == '__main__':
     # style_image = load_image(style_image_path, expand_dims=True)
     # style_input = tf.constant(style_image, tf.float32)
     optimize('princess', style_image_path, 1, 4, 1e-3,
-             style_w, content_w, tv_w, 100, 'checkpoints',
-             'hearst', '../images/content/hearst_mining.jpg', 25, debug=False)
+             style_w, content_w, tv_w, 3000, 'checkpoints',
+             'hearst', '../images/content/hearst_mining.jpg', 3000, debug=False)
 
     # dict1, dict2 = optimize('princess', style_image_path, 1, 4, 1e-3,
              # style_w, content_w, tv_w, 300, 'checkpoints',
