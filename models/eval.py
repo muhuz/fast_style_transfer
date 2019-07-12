@@ -16,10 +16,6 @@ def transfer_style(image_path, checkpoint_path, output_path):
         if os.path.isdir(checkpoint_path):
             ckpt = tf.train.get_checkpoint_state(checkpoint_path)
             if ckpt and ckpt.model_checkpoint_path:
-                # from tensorflow.contrib.framework.python.framework import checkpoint_utils
-                # var_list = checkpoint_utils.list_variables(ckpt.model_checkpoint_path)
-                # for v in var_list:
-                #     print(v)
                 saver.restore(sess, ckpt.model_checkpoint_path)
             else:
                 raise Exception("No Checkpoint Found")
