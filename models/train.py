@@ -41,7 +41,6 @@ def gram(batch_input):
     reshape_batch_t = tf.reshape(batch_input, [batch_size, h*w, filters])
     return tf.matmul(reshape_batch, reshape_batch_t) / (h * w * filters)
 
-
 def tv_loss(image, batch_size):
     """
     Calculates the total variation loss for the output of the transform net
@@ -76,7 +75,6 @@ def optimize(style_name, style_path, epochs, batch_size, learning_rate, style_w,
                 style_act_dict[key] = sess.run(style_act_dict[key])
             for layer in style_layers:
                 style_gram_dict[layer] = sess.run(gram(style_act_dict[layer]))
-    # return style_act_dict, style_gram_dict
 
     if debug:
         for layer, act in style_act_dict.items():
@@ -87,9 +85,7 @@ def optimize(style_name, style_path, epochs, batch_size, learning_rate, style_w,
                 axes[j, k].imshow(act[0][:,:,i])
             fig.suptitle("Activations for Layer: {}".format(layer))
             plt.show()
-            # save_image(act, '../images/layers/{}_{}.jpg'.format(style_name, layer))
         for layer, gram_ in style_gram_dict.items():
-            # save_image(gram_, '../images/layers/{}_{}_gram.jpg'.format(style_name, layer))
             fig, axes = plt.subplots(4, 4)
             for i in range(16):
                 j, k = i % 4, i // 4
@@ -171,17 +167,9 @@ if __name__ == '__main__':
     style_w = 1e2
     tv_w = 2e2
 
-    style_image_path = '../images/style/big_wave.jpg'
-    # style_image = load_image(style_image_path, expand_dims=True)
-    # style_input = tf.constant(style_image, tf.float32)
-    optimize('wave', style_image_path, 1, 4, 1e-3,
-             style_w, content_w, tv_w, 3000, 'checkpoints',
-             'hearst', '../images/content/hearst_mining.jpg', 1000, debug=False)
-
-    # dict1, dict2 = optimize('princess', style_image_path, 1, 4, 1e-3,
-             # style_w, content_w, tv_w, 300, 'checkpoints',
-             # 'hearst', '../images/content/hearst_mining.jpg', 100, debug=True)
-
-
+    style_image_path = '../images/style/mosaic_dots.jpg'
+    optimize('mosaic', style_image_path, 1, 4, 1e-3,
+             style_w, content_w, tv_w, 1000, 'checkpoints',
+             'puppy', '../images/content/puppy.jpg', 1000, debug=False)
 
 
