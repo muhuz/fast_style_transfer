@@ -129,7 +129,7 @@ def optimize(style_name, style_path, epochs, batch_size, learning_rate, style_w,
             if ckpt and ckpt.model_checkpoint_path:
                 saver.restore(sess, ckpt.model_checkpoint_path)
             else:
-                raise Exception("No Checkpoint Found")
+                print("No Checkpoint Found. Training From Scratch.")
         else:
             saver.restore(sess, checkpoint_path)
         for i in range(epochs):
@@ -169,7 +169,7 @@ if __name__ == '__main__':
 
     style_image_path = '../images/style/mosaic_dots.jpg'
     optimize('mosaic', style_image_path, 1, 4, 1e-3,
-             style_w, content_w, tv_w, 2000, 'checkpoints/mosaic_checkpoint/new_checkpoints',
+             style_w, content_w, tv_w, 2000, 'checkpoints',
              'puppy', '../images/content/puppy.jpg', 2000, debug=False)
 
 
